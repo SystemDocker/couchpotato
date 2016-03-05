@@ -1,0 +1,41 @@
+[Unit]
+Description=CouchPotato
+Requires=docker.service
+After=docker.service
+
+[Service]
+# Setup the default environment
+Environment='DOCKER_CONTAINER=%p.%i'
+Environment='DOCKER_IMAGE=needo/couchpotato'
+Environment='CP_CONFIG=/srv/docker/couchpotato/instance/%i/config'
+Environment='CP_DOWNLOADS=/srv/docker/couchpotato/intance/%i/downloads'
+Environment='CP_MOVIES=/srv/docker/couchpotato/intance/%i/movies'
+
+# Pulling a docker image can take a long time, don't time out.
+TimeoutStartSec=0
+
+# Setup the system
+ExecStartPre=/usr/bin/mkdir -p ${CP_CONFIG}
+ExecStartPre=/usr/bin/mkdir -p ${CP_DOWNLOADS}
+ExecStartPre=/usr/bin/mkdir -p ${CP_MOVIES}
+ExecStartPre=/usr/bin/docker pull ${DOCKER_IMAGE}
+
+# Clean any old containers
+ExecStartPre=-/usr/bin/docker rm ${DOCKER_CONTAINER}
+
+# Start the container
+ExecStart=/usr/bin/bash -c 'docker run --rm --name ${DOCKER_CONTAINER} \
+  ${DOCKER_HOSTNAME} ${DOCKER_NETWORKING} ${DOCKER_PORTMAPS} \
+  ${DOCKER_VOLUMES} \
+  -v=${CP_CONFIG}:/config \
+  -v=${CP_DOWNLOADS}:/downloads \
+  -v=${CP_MOVIES}:/movies \
+  -v=/etc/localtime:/etc/localtime:ro \
+  ${DOCKER_IMAGE}'
+
+# Stop the container
+ExecStop=-/usr/bin/docker stop ${DOCKER_CONTAINER}
+
+[Install]
+DefaultInstance=default
+WantedBy=multi-user.target
